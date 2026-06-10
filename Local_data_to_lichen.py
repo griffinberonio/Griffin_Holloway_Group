@@ -8,6 +8,16 @@ import paramiko
 
 print('Starting processing...')
 
+print('scanning for files')
+
+# Walk through the directory and its subdirectories to find all files:
+filepathlist = []
+def os_walk(dir):
+    for root, dirs, files in os.walk(dir):
+        for file in files:
+            filepathlist.append(os.path.join(root, file))   
+
+# Upload file to lichen using SFTP:
 def local_to_lichen_sat(sat_file, output_path):
     if not os.path.exists(sat_file):
         print(f"Satellite data file not found: {sat_file}")
@@ -20,12 +30,12 @@ def local_to_lichen_sat(sat_file, output_path):
 
     sftp = ssh.open_sftp()
 
-    # Upload the file from your local path to the server path
+    # Upload the file from local path to the server path
     filename = sat_file.split('/')[-1]
-    updated_server_path = output_path + filename
+    updated_server_path = output_path + '/' + filename
     outputpath = Path(updated_server_path)
-    
-    if outputpath.exists():
+
+    if sftp.stat(updated_server_path).st_size > 0:
         print(f"Output file already exists and will be overwritten: {output_path}")
         print('Do you want to continue? (yes/no)')
         response = input().strip().lower()
@@ -33,27 +43,17 @@ def local_to_lichen_sat(sat_file, output_path):
             print('Processing cancelled.')
             return
         
-    sftp.put(sat_file, output_path)
+    sftp.put(sat_file, updated_server_path)
 
     # Close connections safely
     sftp.close()
     ssh.close()
     print("File uploaded over SFTP successfully!")
 
-def local_to_lichen_uncer(unc_file, output_path):
-    if not os.path.exists(unc_file):
-        print(f"Uncertainty data file not found: {unc_file}")
-        return
-    
-    uncdata = unc_file
-    print('Saving uncer data to lichen')
-    uncdata.to_file(output_path, driver='netcdf', mode='w')
-
-
 
 if __name__ == "__main__":
 
-    print('Please input the path to the satellite data file (netCDF format):')
+    print('Please input the path to the data file (netCDF format):')
     satpath = input().strip()
     print('Please input the desired output path for the Lichen-compatible file (netCDF format):')
     output_path = input().strip()
